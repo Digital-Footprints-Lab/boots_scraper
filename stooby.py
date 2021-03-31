@@ -7,6 +7,12 @@ import snax_targets
 
 def get_links_from_category(category, baseurl):
 
+    """Get the full URL for each product in a category
+
+    Takes: a category and baseURL from snax_tagets
+    Returns: a pandas series of the product URLs
+    """
+
     page_number = 1
     product_links = []
     page_string = "?pageNo="
