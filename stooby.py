@@ -6,6 +6,8 @@ import time
 import snax_targets2 # this will be the template in published version
 
 
+#! todo - sleepiness, argparse, category parse,
+
 def get_links_from_category(category, baseurl):
 
     """Get the full URL for each product in a category
@@ -38,6 +40,7 @@ def get_links_from_category(category, baseurl):
                 bar() #~ increment progress bar
             #~ increment pagination
             page_number += 1
+            #! sleep for a random length taken from the sleepiness arg
     #~ turn the list into a series and return
     return pd.Series(product_links)
 
@@ -64,6 +67,7 @@ def harvest_product_links():
     for category in snax_targets2.categories:
         product_links = get_links_from_category(category, snax_targets2.baseurl)
         all_links = all_links.append(product_links, ignore_index=True)
+        #! sleep for a random length taken from the sleepiness arg
     all_links = all_links.drop_duplicates()
     all_links = all_links.to_frame()
     all_links.columns =["product_link"]
