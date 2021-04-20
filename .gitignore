@@ -5,3 +5,5 @@ links.json
 /sitemap
 /venv
 
+__pycache__/
+
