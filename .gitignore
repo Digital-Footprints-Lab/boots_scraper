@@ -4,6 +4,8 @@ links.csv
 links.json
 /sitemap
 /venv
+*~
 
 __pycache__/
 
+deadcode.py

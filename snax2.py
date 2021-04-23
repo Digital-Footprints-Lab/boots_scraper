@@ -3,10 +3,12 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from alive_progress import alive_bar
 import time
+import re
 import snax_targets2 # this will be the template in published version
+import lxml      # alt to html.parser, with cchardet >> speed up
+import cchardet  # character recognition
 
-
-#! todo - sleepiness, argparse, category parse,
+#! todo - sleepy, argparse, category parse,
 
 def get_links_from_category(category, baseurl):
 
@@ -26,7 +28,8 @@ def get_links_from_category(category, baseurl):
             #~ pull down the webpage
             target = requests.get(baseurl + category + page_string + str(page_number)).text
             #~ init BS object
-            soup = BeautifulSoup(target, "html.parser")
+            # soup = BeautifulSoup(target, "html.parser")
+            soup = BeautifulSoup(target, "lxml")
             #~ retrieve the link text element for all products on page
             product_list = soup.find_all("a", {"class": "product_name_link product_view_gtm"})
             #~ incrementing to an empty product page means we are done here
@@ -40,7 +43,7 @@ def get_links_from_category(category, baseurl):
                 bar() #~ increment progress bar
             #~ increment pagination
             page_number += 1
-            #! sleep for a random length taken from the sleepiness arg?
+            #! sleep for a random length taken from the sleepy arg?
     #~ turn the list into a series and return
     return pd.Series(product_links)
 
@@ -64,11 +67,20 @@ def extract_fields(dataframe, fields_to_extract):
             target = requests.get(dataframe.at[index, "product_link"]).text
             #~ init BSoup object
             soup = BeautifulSoup(target, "html.parser")
-            #~ for each field of interest
             for field in fields_to_extract:
-                #~ get the
-                field_value = soup.find(field[0], {field[1]: field[2]}).get_text()
-                dataframe.loc[index, field[1]] = field_value
+                #~ use field identifiers to get values
+                # field_value = soup.find(field[0], {field[1]: field[2]}).get_text()
+                try:
+                    if field[3] == "nested":
+                        field_value = soup.find_all(field[0], attrs={field[1]: field[2]})[-1].get_text(strip=True) #find('h3', 'id'="product_active_ingredients").find('p').get_text(strip=True)
+                    else:
+                        field_value = soup.find(field[0], attrs={field[1]: field[2]}).get_text(strip=True) #'div', attrs={'class':'category5'}):
+                except AttributeError:
+                    print("Field not found")
+                    continue
+                # field_value = soup.find(field[0], class_=field[1]).get_text().strip()
+                # field_value = soup.find(field[0]).get_text()
+                dataframe.loc[index, field[2]] = field_value
                 bar()
 
     return dataframe
@@ -79,7 +91,7 @@ def harvest_product_links():
     for category in snax_targets2.categories:
         product_links = get_links_from_category(category, snax_targets2.baseurl)
         all_links = all_links.append(product_links, ignore_index=True)
-        #! sleep for a random length taken from the sleepiness arg
+        #! sleep for a random length taken from the sleepy arg
     all_links = all_links.drop_duplicates()
     all_links = all_links.to_frame()
     all_links.columns =["product_link"]
@@ -89,16 +101,15 @@ def harvest_product_links():
 def main():
     #~ start dataframe with column of all product links
     snax = harvest_product_links()
-    #~ using that df, build new columns for each field
-    fields_to_extract = [["div", "id", "productId"],
-                         ["div", "id", "PDP_productPrice"],
-                         ["div", "class", "details"],
-                         ["p", "dir", "ltr"],
-                        #  ["div", "class", "product_active_ingredients"]
-                        ]
+    #! this will be moved to targets / config
+    fields_to_extract = [["div", "class", "productid", "no_nest"],
+                         ["div", "id", "PDP_productPrice", "no_nest"],
+                         ["div", "class", "product_long_description_subsection", "nested"],]
+
+    #~ using links df, build new columns for each field
     snax = extract_fields(snax, fields_to_extract)
     print(snax)
-
+    # print(snax.at[0, "contentCollapse"])
 
 if __name__ == "__main__":
     main()
