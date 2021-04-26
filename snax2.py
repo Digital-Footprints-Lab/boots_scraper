@@ -1,5 +1,6 @@
 import sys
 import time
+import datetime
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -120,7 +121,7 @@ def main():
         print(snax)
         sys.exit(0)
     print(snax)
-    # print(snax.at[0, "contentCollapse"])
+    snax.to_csv("output/" + datetime.datetime.now().replace(microsecond=0).isoformat() + ".csv")
 
 if __name__ == "__main__":
     main()
