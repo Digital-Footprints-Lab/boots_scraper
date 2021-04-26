@@ -1,8 +1,9 @@
+import sys
+import time
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 from alive_progress import alive_bar
-import time
 import re
 import snax_targets2 # this will be the template in published version
 import lxml      # alt to html.parser, with cchardet >> speed up
@@ -72,7 +73,12 @@ def extract_fields(dataframe, fields_to_extract):
                 # field_value = soup.find(field[0], {field[1]: field[2]}).get_text()
                 try:
                     if field[3] == "nested":
-                        field_value = soup.find_all(field[0], attrs={field[1]: field[2]})[-1].get_text(strip=True) #find('h3', 'id'="product_active_ingredients").find('p').get_text(strip=True)
+                        #~ this is tailored for the final field with "active ingredients" #! fix this!
+                        try:
+                            field_value = soup.find_all(field[0], attrs={field[1]: field[2]})[-1].get_text(strip=True) #find('h3', 'id'="product_active_ingredients").find('p').get_text(strip=True)
+                        except IndexError:
+                            print("Ingredients field not found")
+                            continue
                     else:
                         field_value = soup.find(field[0], attrs={field[1]: field[2]}).get_text(strip=True) #'div', attrs={'class':'category5'}):
                 except AttributeError:
@@ -86,7 +92,7 @@ def extract_fields(dataframe, fields_to_extract):
     return dataframe
 
 
-def harvest_product_links():
+def get_product_links():
     all_links = pd.Series(dtype=str)
     for category in snax_targets2.categories:
         product_links = get_links_from_category(category, snax_targets2.baseurl)
@@ -100,14 +106,19 @@ def harvest_product_links():
 
 def main():
     #~ start dataframe with column of all product links
-    snax = harvest_product_links()
+    snax = get_product_links()
     #! this will be moved to targets / config
     fields_to_extract = [["div", "class", "productid", "no_nest"],
                          ["div", "id", "PDP_productPrice", "no_nest"],
+                         ["div", "class", "details", "no_nest"],
                          ["div", "class", "product_long_description_subsection", "nested"],]
 
     #~ using links df, build new columns for each field
-    snax = extract_fields(snax, fields_to_extract)
+    try:
+        snax = extract_fields(snax, fields_to_extract)
+    except KeyboardInterrupt:
+        print(snax)
+        sys.exit(0)
     print(snax)
     # print(snax.at[0, "contentCollapse"])
 
