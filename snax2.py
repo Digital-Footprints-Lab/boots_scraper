@@ -94,7 +94,7 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract):
             #~ pull down the full product page
             target = requests.get(dataframe.at[index, "product_link"]).text
             #~ init BSoup object
-            soup = BeautifulSoup(target, "html.parser")
+            soup = BeautifulSoup(target, "lxml")
 
             for field in fields_to_extract:
 
