@@ -1,5 +1,7 @@
-alive-progress==1.6.2
-bs4==0.0.1
-pandas==1.2.3
-pip-chill==1.0.1
-requests==2.25.1
+bs4
+pandas
+pip-chill
+alive-progress
+requests
+lxml
+cchardet

@@ -49,17 +49,27 @@ def get_links_from_one_category(category, baseurl):
 
 
 def make_dataframe_of_links_from_all_categories():
+
+    """
+    Rets: DF with first column as product URLs
+    """
+
     all_links = pd.Series(dtype=str)
     print("\n" + f">>> Finding links for {len(targets.categories)} product categories:")
+
     for category in targets.categories:
         product_links = get_links_from_one_category(category, targets.baseurl)
         all_links = all_links.append(product_links, ignore_index=True)
+
     all_links = all_links.drop_duplicates().reset_index(drop=True)
+    #~ send series to DF
     all_links = all_links.to_frame()
+    #~ label column one
     all_links.columns = ["product_link"]
     all_links.to_csv("output/linx_" +
                      datetime.datetime.now().replace(microsecond=0).isoformat() +
                      ".csv")
+
     return all_links
 
 
@@ -75,16 +85,19 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract):
 
     total_snax = len(fields_to_extract) * dataframe.shape[0]
     print("\n" + f">>> Requesting {total_snax} product details:")
+
     with alive_bar(total_snax,
                    f"""Acquiring {len(fields_to_extract)}
                    fields for {dataframe.shape[0]} products""") as bar:
+
         for index in range(dataframe.shape[0]):
             #~ pull down the full product page
             target = requests.get(dataframe.at[index, "product_link"]).text
             #~ init BSoup object
             soup = BeautifulSoup(target, "html.parser")
+
             for field in fields_to_extract:
-                #~ use field identifiers to get values
+
                 try:
                     if field[3] == "nested":
                         #~ this is tailored for the final field with "active ingredients" #! fix this!
@@ -98,22 +111,20 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract):
                 except AttributeError:
                     print(f"Field \"{field[2]}\" not found")
                     continue
+
                 dataframe.loc[index, field[2]] = field_value
                 bar()
+
     dataframe.to_csv("output/snax_" +
                      datetime.datetime.now().replace(microsecond=0).isoformat() +
                      ".csv")
     return dataframe
 
 
-
-
 def main():
 
-    snax = make_dataframe_of_links_from_all_categories()
-
-    #~ using links df, build new columns for each field
     try:
+        snax = make_dataframe_of_links_from_all_categories()
         snax = populate_links_df_with_extracted_fields(snax,
                                                        targets.fields_to_extract)
     except KeyboardInterrupt:
@@ -121,6 +132,7 @@ def main():
         sys.exit(0)
 
     print(snax)
+
 
 if __name__ == "__main__":
     main()
