@@ -2,6 +2,7 @@ import sys
 import time
 import datetime
 import requests
+import re
 from bs4 import BeautifulSoup
 import pandas as pd
 from alive_progress import alive_bar
@@ -84,6 +85,7 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract):
     Rets: populated dataframe"""
 
     total_snax = len(fields_to_extract) * dataframe.shape[0]
+    regex = re.compile(r"[\n\r\t]+") #~ whitespace cleaner
     print("\n" + f">>> Requesting {total_snax} product details:")
 
     with alive_bar(total_snax,
@@ -100,16 +102,16 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract):
 
                 field_value = ""
                 try:
-                    if field[0] == "multi":
-                        #~ this will bulk aquire all nested fields
+                    if field[0] == "multi": #~ bulk aquire all nested subfields
                         try:
                             full_div = soup.find_all(field[1], attrs={field[2]: field[3]})
                             for i in full_div:
                                 field_value += i.text.strip() + " "
+                                field_value = regex.sub(" ", field_value)
                         except Exception as e:
                             print(f"Field \"{field[3]}\" not found", e)
                             continue
-                    else:
+                    else: #~ just get the target field
                         field_value = soup.find(field[1], attrs={field[2]: field[3]}).get_text(strip=True) #'div', attrs={'class':'category5'}):
                 except AttributeError:
                     print(f"Field \"{field[3]}\" not found")
