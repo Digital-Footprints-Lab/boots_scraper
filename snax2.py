@@ -98,21 +98,24 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract):
 
             for field in fields_to_extract:
 
+                field_value = ""
                 try:
-                    if field[3] == "nested":
-                        #~ this is tailored for the final field with "active ingredients" #! fix this!
+                    if field[0] == "multi":
+                        #~ this will bulk aquire all nested fields
                         try:
-                            field_value = soup.find_all(field[0], attrs={field[1]: field[2]})[-1].get_text(strip=True) #find('h3', 'id'="product_active_ingredients").find('p').get_text(strip=True)
-                        except IndexError:
-                            print(f"Field \"{field[2]}\" not found")
+                            full_div = soup.find_all(field[1], attrs={field[2]: field[3]})
+                            for i in full_div:
+                                field_value += i.text.strip() + " "
+                        except Exception as e:
+                            print(f"Field \"{field[3]}\" not found", e)
                             continue
                     else:
-                        field_value = soup.find(field[0], attrs={field[1]: field[2]}).get_text(strip=True) #'div', attrs={'class':'category5'}):
+                        field_value = soup.find(field[1], attrs={field[2]: field[3]}).get_text(strip=True) #'div', attrs={'class':'category5'}):
                 except AttributeError:
-                    print(f"Field \"{field[2]}\" not found")
+                    print(f"Field \"{field[3]}\" not found")
                     continue
 
-                dataframe.loc[index, field[2]] = field_value
+                dataframe.loc[index, field[3]] = field_value
                 bar()
 
     dataframe.to_csv("output/snax_" +
