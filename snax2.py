@@ -1,14 +1,32 @@
+import os
 import sys
 import time
 import datetime
 import requests
 import re
-from bs4 import BeautifulSoup
+import glob
+from retry import retry
 import pandas as pd
+from bs4 import BeautifulSoup
 from alive_progress import alive_bar
 import targets # this will be the template in published version
 import lxml      # alt to html.parser, with cchardet >> speed up
 import cchardet  # character recognition
+import argparse
+
+
+def args_setup():
+
+    parser = argparse.ArgumentParser(description="Boots Product Scraper v21.05.05",
+                                     epilog="Example: python3 snax2.py --links --products")
+    parser.add_argument("--links", action="store_true",
+                        help="Just acquire the product links.")
+    parser.add_argument("--products", action="store_true",
+                        help="Just acquire the product page detail fields.")
+
+    args = parser.parse_args()
+
+    return parser, args
 
 
 def get_links_from_one_category(category, baseurl):
@@ -93,8 +111,14 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract):
                    fields for {dataframe.shape[0]} products""") as bar:
 
         for index in range(dataframe.shape[0]):
-            #~ pull down the full product page
-            target = requests.get(dataframe.at[index, "product_link"]).text
+
+            @retry(ConnectionResetError, tries=3, delay=10, backoff=10)
+            def get_target_page(index):
+                #~ pull down the full product page
+                return requests.get(dataframe.at[index, "product_link"]).text
+
+            target = get_target_page(index)
+
             #~ init BSoup object
             soup = BeautifulSoup(target, "lxml")
 
@@ -131,7 +155,7 @@ def main():
     try:
         snax = make_dataframe_of_links_from_all_categories()
         snax = populate_links_df_with_extracted_fields(snax,
-                                                       targets.fields_to_extract)
+                                                   targets.fields_to_extract)
     except KeyboardInterrupt:
         print(snax)
         sys.exit(0)
@@ -140,5 +164,7 @@ def main():
 
 
 if __name__ == "__main__":
+
+    parser, args = args_setup()
     main()
 
