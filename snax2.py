@@ -17,7 +17,7 @@ import argparse
 
 def args_setup():
 
-    parser = argparse.ArgumentParser(description="Boots Product Scraper v21.05.05",
+    parser = argparse.ArgumentParser(description="Boots Product Scraper b21.05.05",
                                      epilog="Example: python3 snax2.py --links --products")
     parser.add_argument("--links", action="store_true",
                         help="Just acquire the product links.")
@@ -39,7 +39,7 @@ def get_links_from_one_category(category, baseurl):
     page_number = 1
     product_links = []
     page_string = "?pageNo=" #~ the URL page counter
-    #~ the final section of the category URL - often inconsistent
+    #~ the final section of the category URL
     category_name = category.split("/")[-1]
 
     with alive_bar(0, f"Acquiring product links for {category_name}") as bar:
@@ -152,6 +152,8 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract):
 
 def main():
 
+    parser, args = args_setup()
+    print(f"\n>>> Starting snax2, target base URL is {targets.baseurl}")
     try:
         snax = make_dataframe_of_links_from_all_categories()
         snax = populate_links_df_with_extracted_fields(snax,
@@ -165,6 +167,5 @@ def main():
 
 if __name__ == "__main__":
 
-    parser, args = args_setup()
     main()
 
