@@ -128,7 +128,7 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract, start_
 
                 field_value = ""
                 try:
-                    if field[0] == "multi": #~ bulk aquire all nested subfields
+                    if field[0] == "multi": #~ nested aquire from "Product details" div
                         try:
                             full_div = soup.find_all(field[1], attrs={field[2]: field[3]})
                             for i in full_div:
@@ -145,9 +145,12 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract, start_
 
                 dataframe.loc[index, field[3]] = field_value
                 bar()
-
+#! choose true long details field and discard crap.
+    # dataframe["long_details"] = dataframe[["14", "13"]].apply(lambda a, b: a if len(a) > len(b) else b)
+    # dataframe["long_details"] = dataframe[["14", "13"]].apply(lambda t: t[0] if len(t[0]) > len(t[1]) else t[1])
+    # dataframe["long_details"] = dataframe[["14", "13"]].apply(lambda t: max(t, key=len))
+    # dataframe[["14", "13"]].apply(lambda t: max(t, key=len))
     dataframe.to_csv("output/snax_" + start_time + ".csv")
-
     return dataframe
 
 
@@ -158,7 +161,6 @@ def main():
     start_time = datetime.datetime.now().replace(microsecond=0).isoformat()
 
     print(f"\n>>> Starting snax2 @ {start_time} - target base URL is {targets.baseurl}")
-
     try:
         snax = make_dataframe_of_links_from_all_categories(start_time)
         snax = populate_links_df_with_extracted_fields(snax,
