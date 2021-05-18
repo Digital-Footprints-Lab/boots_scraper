@@ -15,20 +15,20 @@ import cchardet  # character recognition
 import argparse
 
 
-
 def args_setup():
 
     parser = argparse.ArgumentParser(description="Boots Product Scraper b21.05.05",
                                      epilog="Example: python3 snax2.py --links --products")
-    parser.add_argument("--links", action="store_true",
+    parser.add_argument("--links",
+                        action="store_true",
                         help="Just acquire the product links.")
-    parser.add_argument("--products", action="store_true",
+    parser.add_argument("--products",
+                        action="store_true",
                         help="Just acquire the product page detail fields.")
 
     args = parser.parse_args()
 
     return parser, args
-
 
 
 def get_links_from_one_category(category, baseurl):
@@ -63,11 +63,10 @@ def get_links_from_one_category(category, baseurl):
                 bar() #~ increment progress bar
             #~ increment pagination
             page_number += 1
-            #! sleep for a random length taken from the sleepy arg?
+
     #~ turn the list into a series and return
     linx = pd.Series(product_links)
     return linx
-
 
 
 def make_dataframe_of_links_from_all_categories(start_time):
@@ -77,7 +76,7 @@ def make_dataframe_of_links_from_all_categories(start_time):
     """
 
     all_links = pd.Series(dtype=str)
-    print("\n" + f">>> Finding links for {len(targets.categories)} product categories")
+    print("\n" + f".oO Finding links for {len(targets.categories)} product categories")
 
     for category in targets.categories:
         product_links = get_links_from_one_category(category, targets.baseurl)
@@ -106,7 +105,7 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract, start_
 
     total_snax = len(fields_to_extract) * dataframe.shape[0]
     regex = re.compile(r"[\n\r\t]+") #~ whitespace cleaner
-    print("\n" + f">>> Requesting {total_snax} product details:")
+    print("\n" + f".oO Requesting {total_snax} product details:")
 
     with alive_bar(total_snax,
                    f"""Acquiring {len(fields_to_extract)}
@@ -145,14 +144,33 @@ def populate_links_df_with_extracted_fields(dataframe, fields_to_extract, start_
 
                 dataframe.loc[index, field[3]] = field_value
                 bar()
-#! choose true long details field and discard crap.
-    # dataframe["long_details"] = dataframe[["14", "13"]].apply(lambda a, b: a if len(a) > len(b) else b)
-    # dataframe["long_details"] = dataframe[["14", "13"]].apply(lambda t: t[0] if len(t[0]) > len(t[1]) else t[1])
-    # dataframe["long_details"] = dataframe[["14", "13"]].apply(lambda t: max(t, key=len))
-    # dataframe[["14", "13"]].apply(lambda t: max(t, key=len))
+
     dataframe.to_csv("output/snax_" + start_time + ".csv")
     return dataframe
 
+
+def select_long_description_field(dataframe):
+
+    """Columns named 13 and 14 and called that because
+    those are the nested div names on the boots website;
+    it is unclear which will be the true field, so both are acquired.
+    We need to take the longer field, the shorter always being PDF or
+    ordering details, or other crap that we don't want."""
+
+    with alive_bar(dataframe.shape[0],
+                   f""".oO IDing long_description field for {dataframe.shape[0]} products""") as bar:
+
+        for index in range(dataframe.shape[0]):
+
+            #~ compare fields
+            longer_field = max([dataframe.iloc[index]["13"]], [dataframe.iloc[index]["14"]])
+            dataframe.loc[index, "long_description"] = longer_field
+            bar()
+
+    #~ remove candidate fields
+    dataframe = dataframe.drop(["13", "14"], axis=1)
+
+    return dataframe
 
 
 def main():
@@ -160,18 +178,20 @@ def main():
     parser, args = args_setup()
     start_time = datetime.datetime.now().replace(microsecond=0).isoformat()
 
-    print(f"\n>>> Starting snax2 @ {start_time} - target base URL is {targets.baseurl}")
+    print(f"\n.oO Starting snax2 @ {start_time} - target base URL is {targets.baseurl}")
+
     try:
         snax = make_dataframe_of_links_from_all_categories(start_time)
         snax = populate_links_df_with_extracted_fields(snax,
                                                        targets.fields_to_extract,
                                                        start_time)
+        snax = select_long_description_field(snax)
+
     except KeyboardInterrupt:
-        print("\n>>> OK, dropping. That run was NOT saved.")
+        print("\n.oO OK, dropping. That run was not saved.")
         sys.exit(0)
 
     print(snax)
-
 
 
 if __name__ == "__main__":
