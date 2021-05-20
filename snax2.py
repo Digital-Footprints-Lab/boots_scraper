@@ -48,20 +48,20 @@ def get_links_from_one_category(category, baseurl):
             page_number += 1
 
     #~ turn the list into a series and return
-    linx = pd.Series(product_links)
+    linx = pd.Series(product_links, dtype=object)
     return linx
 
 
-def make_dataframe_of_links_from_all_categories(start_time):
+def make_dataframe_of_links_from_all_categories(start_time, categories):
 
     """
     Rets: DF with first column as product URLs
     """
 
     all_links = pd.Series(dtype=str)
-    print("\n" + f".oO Finding links for {len(targets.categories)} product categories")
+    print("\n" + f".oO Finding links for {len(categories)} product categories")
 
-    for category in targets.categories:
+    for category in categories:
         product_links = get_links_from_one_category(category, targets.baseurl)
         all_links = all_links.append(product_links, ignore_index=True)
 
@@ -162,13 +162,19 @@ def main():
     print(f"\n.oO Starting snax2 @ {start_time} - target base URL is {targets.baseurl}")
 
     try:
-        snax = make_dataframe_of_links_from_all_categories(start_time)
-        snax.to_csv("output/linx_" + start_time + ".csv") #~ failsafe save point
+        snax = make_dataframe_of_links_from_all_categories(start_time,
+                                                           targets.categories)
+        if snax.empty:
+            print(f"\n.oO No links retrieved... Stopping.")
+            sys.exit(0)
+
+        snax.to_csv("output/linx_" + start_time + ".csv") #~ save links
+
         snax = populate_links_df_with_extracted_fields(snax,
                                                        targets.fields_to_extract,
                                                        start_time)
         snax = select_long_description_field(snax)
-        snax.to_csv("output/snax_" + start_time + ".csv")
+        snax.to_csv("output/snax_" + start_time + ".csv") #~ save full output
 
     except KeyboardInterrupt:
         print("\n.oO OK, dropping. That run was not saved.")
