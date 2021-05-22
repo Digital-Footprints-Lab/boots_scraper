@@ -65,6 +65,10 @@ def make_dataframe_of_links_from_all_categories(start_time, categories):
         product_links = get_links_from_one_category(category, targets.baseurl)
         all_links = all_links.append(product_links, ignore_index=True)
 
+    #~ add some links that don't appear in categories
+    uncat = pd.Series(targets.uncategorised)
+    all_links = all_links.append(uncat, ignore_index=True)
+    #~ clean dups and re-index
     all_links = all_links.drop_duplicates().reset_index(drop=True)
     #~ send series to DF
     all_links = all_links.to_frame()
@@ -88,7 +92,7 @@ def populate_links_df_with_extracted_fields(dataframe,
 
     total_snax = len(fields_to_extract) * dataframe.shape[0]
     regex = re.compile(r"[\n\r\t]+") #~ whitespace cleaner
-    print("\n" + f".oO Requesting {total_snax} product details:")
+    print("\n" + f".oO Requesting {total_snax} product details")
 
     with alive_bar(total_snax,
                    f"""Acquiring {len(fields_to_extract)}
@@ -158,6 +162,7 @@ def select_long_description_field(dataframe):
 def main():
 
     start_time = datetime.datetime.now().replace(microsecond=0).isoformat()
+    start_counter = time.perf_counter()
 
     print(f"\n.oO Starting snax2 @ {start_time} - target base URL is {targets.baseurl}")
 
@@ -180,7 +185,10 @@ def main():
         print("\n.oO OK, dropping. That run was not saved.")
         sys.exit(0)
 
-    print(snax)
+    end_time = datetime.datetime.now().replace(microsecond=0).isoformat()
+    end_counter = time.perf_counter()
+    elapsed = datetime.timedelta(seconds=(end_counter - start_counter))
+    print(f".oO OK, finished scrape @ {end_time}, taking {elapsed}")
 
 
 if __name__ == "__main__":
