@@ -3,6 +3,7 @@ import sys
 import time
 import datetime
 import requests
+import logging
 import re
 import glob
 from retry import retry
@@ -66,8 +67,8 @@ def make_dataframe_of_links_from_all_categories(start_time, categories):
         all_links = all_links.append(product_links, ignore_index=True)
 
     #~ add some links that don't appear in categories
-    uncat = pd.Series(targets.uncategorised)
-    all_links = all_links.append(uncat, ignore_index=True)
+    # uncat = pd.Series(targets.uncategorised)
+    # all_links = all_links.append(uncat, ignore_index=True)
     #~ clean dups and re-index
     all_links = all_links.drop_duplicates().reset_index(drop=True)
     #~ send series to DF
@@ -163,6 +164,7 @@ def main():
 
     start_time = datetime.datetime.now().replace(microsecond=0).isoformat()
     start_counter = time.perf_counter()
+
 
     print(f"\n.oO Starting snax2 @ {start_time} - target base URL is {targets.baseurl}")
 
