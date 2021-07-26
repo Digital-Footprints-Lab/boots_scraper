@@ -33,7 +33,6 @@ def get_links_from_one_category(category, baseurl):
         while True:
             #~ pull down the category page
             category_page = baseurl + category + targets.page_string + str(page_number)
-            print(category_page)
             target = requests.get(category_page, headers=scraper_meta.user_agent).text
             #~ init BS object
             soup = BeautifulSoup(target, "lxml")
@@ -56,7 +55,6 @@ def get_links_from_one_category(category, baseurl):
 
     #~ turn the list into a series and return
     linx = pd.Series(product_links, dtype=object)
-    print(linx)
     return linx
 
 
