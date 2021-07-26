@@ -13,3 +13,6 @@ output
 targets.py
 nohup.out
 full_targets.py
+sd_targets.py
+boots_targets.py
+targetsbootsshort.py

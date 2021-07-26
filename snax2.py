@@ -7,13 +7,15 @@ import logging
 import re
 import glob
 from retry import retry
+from random import randint
 import pandas as pd
 from bs4 import BeautifulSoup
 from alive_progress import alive_bar
-import targets   # this will be the template in published version
 import lxml      # alt to html.parser, with cchardet >> speed up
 import cchardet  # character recognition
 
+import targets       # this will be the template in published version
+import scraper_meta  # things like user agents, in case we need to rotate
 
 def get_links_from_one_category(category, baseurl):
 
@@ -24,18 +26,22 @@ def get_links_from_one_category(category, baseurl):
 
     page_number = 1
     product_links = []
-    page_string = "?pageNo=" #~ the URL page counter
     #~ the final section of the category URL
     category_name = category.split("/")[-1]
 
     with alive_bar(0, f"Acquiring product links for {category_name}") as bar:
         while True:
-            #~ pull down the webpage
-            target = requests.get(baseurl + category + page_string + str(page_number)).text
+            #~ pull down the category page
+            category_page = baseurl + category + targets.page_string + str(page_number)
+            print(category_page)
+            target = requests.get(category_page, headers=scraper_meta.user_agent).text
             #~ init BS object
             soup = BeautifulSoup(target, "lxml")
             #~ retrieve the link text element for all products on page
+            #! boots
             product_list = soup.find_all("a", {"class": "product_name_link product_view_gtm"})
+            #! sd
+            # product_list = soup.find_all("a", {"class": "item__productName ClickSearchResultEvent_Class"})
             #~ incrementing to an empty product page means we are done here
             if len(product_list) == 0:
                 print(f"OK, {len(product_links)} {category_name} links retrieved [{page_number - 1} pages]")
@@ -50,6 +56,7 @@ def get_links_from_one_category(category, baseurl):
 
     #~ turn the list into a series and return
     linx = pd.Series(product_links, dtype=object)
+    print(linx)
     return linx
 
 
@@ -104,9 +111,14 @@ def populate_links_df_with_extracted_fields(dataframe,
             @retry(ConnectionResetError, tries=3, delay=10, backoff=10)
             def get_target_page(index):
                 #~ pull down the full product page
-                return requests.get(dataframe.at[index, "product_link"]).text
+                return requests.get(dataframe.at[index, "product_link"], headers=scraper_meta.user_agent).text
 
-            target = get_target_page(index)
+            try:
+                target = get_target_page(index)
+            except ConnectionResetError: #~ try giving the server a break
+                print("\n" + f".oO Issue getting page: {e}, sleeping for 15 minutes.")
+                time.sleep(900)
+                continue
 
             #~ init BSoup object
             soup = BeautifulSoup(target, "lxml")
@@ -132,6 +144,8 @@ def populate_links_df_with_extracted_fields(dataframe,
 
                 dataframe.loc[index, field[3]] = field_value
                 bar()
+
+                time.sleep(randint(1, 3)) #~ relax a little
 
     return dataframe
 
@@ -164,7 +178,6 @@ def main():
 
     start_time = datetime.datetime.now().replace(microsecond=0).isoformat()
     start_counter = time.perf_counter()
-
 
     print(f"\n.oO Starting snax2 @ {start_time} - target base URL is {targets.baseurl}")
 
