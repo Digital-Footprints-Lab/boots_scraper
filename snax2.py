@@ -6,6 +6,7 @@ import requests
 import logging
 import re
 import glob
+from pathlib import Path
 from retry import retry
 from random import randint
 import pandas as pd
@@ -207,6 +208,7 @@ def main():
             print(f"\n.oO No links retrieved... Stopping.")
             sys.exit(0)
 
+        Path("./output").mkdir(parents=False, exist_ok=True) #~ make output folder, if not there
         snax.to_csv("output/linx_" + start_time + ".csv") #~ save links
 
         snax = populate_links_df_with_extracted_fields(snax,
