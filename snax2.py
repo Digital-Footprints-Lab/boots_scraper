@@ -14,7 +14,6 @@ from bs4 import BeautifulSoup
 from alive_progress import alive_bar
 import lxml      # alt to html.parser, with cchardet >> speed up
 import cchardet  # character recognition
-
 import targets       # this will be the template in published version
 import scraper_meta  # things like user agents, in case we need to rotate
 
@@ -30,19 +29,6 @@ def get_links_from_one_category(category, baseurl) -> pd.Series:
     product_links = []
     #~ the final section of the category URL
     category_name = category.split("/")[-1]
-
-    # def get_product_list(target, **attrs):
-    #     return soup.find_all(target, attrs)
-
-    # def get_product_list(target, **attrs):
-    #     # if "css_class" in attrs:
-    #     #     css_classes = attrs.pop("css_class")
-    #         # attrs["class"] = css_classes
-    #     print(f"target: {target}, attrs: {attrs}")
-    #     return soup.find_all(target=target, attrs=attrs)
-
-    # get_product_list("a", "class", "product_name_link product_view_gtm")
-    # get_product_list(target="a", attrs={"class" : "item__productName ClickSearchResultEvent_Class"})
 
     with alive_bar(0, f"Acquiring product links for {category_name}") as bar:
         while True:
@@ -82,7 +68,10 @@ def make_dataframe_of_links_from_all_categories(start_time,
                                                 categories) -> pd.DataFrame:
 
     """
-    Rets: DF with first column as product URLs
+    Calls get_links_from_one_category (this paginates) for each category.
+    These are concatenated as the first column of the output DF.
+
+    Rets: Dataframe with first column as product URLs
     """
 
     all_links = pd.Series(dtype=str)
@@ -196,7 +185,6 @@ def select_long_description_field(dataframe) -> pd.DataFrame:
 def main():
 
     try:
-
         start_time = datetime.datetime.now().replace(microsecond=0).isoformat()
         start_counter = time.perf_counter()
 
@@ -216,7 +204,6 @@ def main():
                                                        start_time)
         snax = select_long_description_field(snax)
         snax.to_csv("output/snax_" + start_time + ".csv") #~ save full output
-
 
         end_time = datetime.datetime.now().replace(microsecond=0).isoformat()
         end_counter = time.perf_counter()
