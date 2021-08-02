@@ -6,7 +6,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-db_name = "test001.db"
+db_name = "test002.db"
 
 product_csv = "scrape_PoC.csv"
 product_table = "products"
@@ -27,10 +27,10 @@ def sqlite_connect(db_name):
     return connection, cursor
 
 
-def csv_to_sqlite_table_and_add_index(cursor,
-                                      connection,
-                                      csv,
-                                      table_name):
+def csv_to_sqlite_table(cursor,
+                        connection,
+                        csv,
+                        table_name):
 
     """
     csv : name/path of the incoming csv file
@@ -77,20 +77,20 @@ def main():
     connection, cursor = sqlite_connect(db_name)
 
     #~ bring product csv into sqlite table, apply index
-    csv_to_sqlite_table_and_add_index(cursor,
-                                      connection,
-                                      product_csv,
-                                      product_table)
+    csv_to_sqlite_table(cursor,
+                        connection,
+                        product_csv,
+                        product_table)
     create_index(cursor,
                  product_table,
                  product_index,
                  "productid")
 
     #~ bring person csv into sqlite table, apply index
-    csv_to_sqlite_table_and_add_index(cursor,
-                                      connection,
-                                      person_csv,
-                                      person_table)
+    csv_to_sqlite_table(cursor,
+                        connection,
+                        person_csv,
+                        person_table)
     create_index(cursor,
                  person_table,
                  person_index,
