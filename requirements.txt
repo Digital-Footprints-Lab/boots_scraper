@@ -1,7 +1,10 @@
+alive-progress
+black
 bs4
+cchardet
+lxml
 pandas
 pip-chill
-alive-progress
+pylint
 requests
-lxml
-cchardet
+retry
