@@ -6,7 +6,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-db_name = "test017.db"
+db_name = "test001.db"
 
 product_csv = "scrape_PoC.csv"
 # product_csv = "scrape_dups.csv"
@@ -35,8 +35,12 @@ def csv_to_new_sqlite_table(cursor,
                             table_name):
 
     """
-    csv : name/path of the incoming csv file
-    table_name : name you are giving to the new table
+    ARGS: sqlite cursor + connection,
+          name of table to index,
+          name of incoming csv file,
+          name to apply to new table.
+
+    RETS: nothing, commits changes to SQLite DB.
     """
 
     try:
@@ -60,7 +64,7 @@ def create_index(cursor,
                  index_column):
 
     """
-    ARGS: sql cursor + connection,
+    ARGS: sqlite cursor + connection,
           name of table to index,
           name you are giving to your new index,
           which column to be indexed
@@ -69,8 +73,9 @@ def create_index(cursor,
     """
 
     try:
-        cursor.execute(f"""CREATE UNIQUE INDEX IF NOT EXISTS {index_name}
-                           ON {table_name}({index_column});""")
+        cursor.execute(f"""CREATE UNIQUE INDEX IF NOT EXISTS
+                           {index_name} ON
+                           {table_name}({index_column});""")
 
         connection.commit()
 
@@ -81,7 +86,7 @@ def create_index(cursor,
 def add_csv_lines_to_table(cursor, connection, csv_file, table_name):
 
     """
-    ARGS: sql cursor + connection,
+    ARGS: sqlite cursor + connection,
           input csv file to be added,
           name of the table to be added to
 
@@ -94,16 +99,15 @@ def add_csv_lines_to_table(cursor, connection, csv_file, table_name):
 
     incoming_df = pd.read_csv(csv_file)
 
+    #! this cannot deal with unclean data. sql hates quotes and brackets. todo.
+    #! [although cleaning should be elsewhere. raw dirty, DB clean.]
     for index, row in incoming_df.iterrows():
-        print(row["productid"])
         cursor.execute(f"""INSERT INTO {table_name}
-                           (productid, name, PDP_productPrice, details, long_description)
-                           VALUES
-                           ("{row["productid"]}",
+                           (productid, name, PDP_productPrice)
+                           VALUES(
+                           "{row["productid"]}",
                            "{row["name"]}",
-                           "{row["PDP_productPrice"]}",
-                           "{row["details"]}",
-                           "{row["long_description"]}")
+                           "{row["PDP_productPrice"]}")
                            ON CONFLICT DO NOTHING""")
 
     connection.commit()
@@ -111,7 +115,23 @@ def add_csv_lines_to_table(cursor, connection, csv_file, table_name):
 
 def apply_transaction_to_person(person, transaction_id):
 
+    #~ read transaction csv into df
+
+    #~ tally boots id number with alspac id number
+        #~ boots id is column[0] "ID" in the card transaction csv
+        #~ alspac id is column[0] "alspacid" in the person_PoC.csv
+    #~ create table?? of unique transaction contents?
+        #~ - >sql join
+
+    #~ read list of products for each transaction
+
+
+    #~ for each item, retrieve product info from products table
+    #~ and
     #! TODO
+    #! what does this take in? csv?
+    #! create a new table for each transaction?
+
     pass
 
 
@@ -132,14 +152,11 @@ def main():
                  product_index,
                  "productid")
 
-
+    #~ adding new products to table to test duplicate prevention
     add_csv_lines_to_table(cursor, connection, more_csv, product_table)
-
-    print(cursor.execute(f"SELECT * FROM products").fetchall())
 
     record_count = len(cursor.execute(f"SELECT * FROM products").fetchall())
     print(f"{record_count} records currently in table products.")
-
 
     #~ bring person csv into sqlite table, apply index
     csv_to_new_sqlite_table(cursor,
@@ -150,7 +167,7 @@ def main():
                  connection,
                  person_table,
                  person_index,
-                 "id")
+                 "alspacid")
 
     #~ close connection to DB
     connection.close()
