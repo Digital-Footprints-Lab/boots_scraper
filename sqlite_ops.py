@@ -1,3 +1,5 @@
+import sys
+import argparse
 import csv
 import pandas as pd
 import sqlite3
@@ -6,7 +8,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-db_name = "test001.db"
+db_name = "test0113.db"
 
 product_csv = "scrape_PoC.csv"
 # product_csv = "scrape_dups.csv"
@@ -17,6 +19,22 @@ product_index = "product_index"
 person_csv = "person_PoC.csv"
 person_table = "persons"
 person_index = "person_index"
+
+
+def args_setup():
+
+    parser = argparse.ArgumentParser(description="SQLite Interfacer for Transactional Epidemiology",
+                                     epilog="Example: python3 sql_ops.py --update_products")
+    parser.add_argument("--update_products", action="store_true",
+        help="Bring in new products to DB in as csv.")
+    parser.add_argument("--update_persons", action="store_true",
+        help="Bring in new persons to DB as csv.)")
+    parser.add_argument("--join_transactions", action="store_true",
+        help="Add products in transaction_csv to individual person table (or create table if new).)")
+
+    args = parser.parse_args()
+
+    return parser, args
 
 
 def sqlite_connect(db_name):
@@ -50,9 +68,6 @@ def csv_to_new_sqlite_table(cursor,
                                 index=False)
     except Exception as e:
         print(e, csv, "not imported.")
-
-    record_count = len(cursor.execute(f"SELECT * FROM {table_name}").fetchall())
-    print(f"{record_count} records currently in table {table_name}.")
 
     connection.commit()
 
@@ -101,7 +116,7 @@ def add_csv_lines_to_table(cursor, connection, csv_file, table_name):
 
     #! this cannot deal with unclean data. sql hates quotes and brackets. todo.
     #! [although cleaning should be elsewhere. raw dirty, DB clean.]
-    for index, row in incoming_df.iterrows():
+    for _, row in incoming_df.iterrows():
         cursor.execute(f"""INSERT INTO {table_name}
                            (productid, name, PDP_productPrice)
                            VALUES(
@@ -113,61 +128,94 @@ def add_csv_lines_to_table(cursor, connection, csv_file, table_name):
     connection.commit()
 
 
-def apply_transaction_to_person(person, transaction_id):
+def join_transaction_to_person(cursor, connection, transaction_csv):
 
     #~ read transaction csv into df
+    transaction_df = pd.read_csv(transaction_csv)
 
-    #~ tally boots id number with alspac id number
-        #~ boots id is column[0] "ID" in the card transaction csv
-        #~ alspac id is column[0] "alspacid" in the person_PoC.csv
-    #~ create table?? of unique transaction contents?
-        #~ - >sql join
+    #~ make a transactions table for this person (if new)
+    table_name = transaction_df.iloc[0]["ID"]
+    print(table_name)
+    #! todo create new table if exists
+    #! do we have to describe the table explicitly?
+    #! i'd prefer to have the output of the JOIN to describe the table columns
+    # cursor.execute(f"""CREATE TABLE IF NOT EXISTS {"table_name"}""")
 
-    #~ read list of products for each transaction
+    for _, row in transaction_df.iterrows():
+        cursor.execute(f"""SELECT *
+                           FROM persons
+                           INNER JOIN products
+                           ON persons.bootsid = {row["ID"]}
+                           AND products.productid = {row["ITEM_CODE"]}""")
+        result = cursor.fetchall()
+        print(result)
+        #! TODO insert each join to this person's product table table
+        #! TODO include the transaction details, in particular time/date
+
+    connection.commit()
 
 
-    #~ for each item, retrieve product info from products table
-    #~ and
-    #! TODO
-    #! what does this take in? csv?
-    #! create a new table for each transaction?
+def table_record_count(cursor, table_name):
 
-    pass
+    try:
+        count = len(cursor.execute(f"SELECT * FROM {table_name}").fetchall())
+        print(f"{count} records currently in table {table_name}.")
+    except Exception as e:
+        print(e)
 
 
 def main():
 
+    parser, args = args_setup()
+
+    if len(sys.argv) < 2:
+        parser.print_help()
+        sys.exit(0)
+
     #~ connect!
     connection, cursor = sqlite_connect(db_name)
 
-    #~ bring product csv into sqlite table
-    csv_to_new_sqlite_table(cursor,
-                            connection,
-                            product_csv,
-                            product_table)
-    #~ assert index on productid column
-    create_index(cursor,
-                 connection,
-                 product_table,
-                 product_index,
-                 "productid")
+    if args.update_products:
+        #~ bring product csv into sqlite table
+        csv_to_new_sqlite_table(cursor,
+                                connection,
+                                product_csv,
+                                product_table)
 
-    #~ adding new products to table to test duplicate prevention
-    add_csv_lines_to_table(cursor, connection, more_csv, product_table)
+        #~ adding new products to table to test duplicate prevention
+        add_csv_lines_to_table(cursor, connection, more_csv, product_table)
 
-    record_count = len(cursor.execute(f"SELECT * FROM products").fetchall())
-    print(f"{record_count} records currently in table products.")
+        #~ index on productid column
+        create_index(cursor,
+                    connection,
+                    product_table,
+                    product_index,
+                    "productid")
 
-    #~ bring person csv into sqlite table, apply index
-    csv_to_new_sqlite_table(cursor,
-                            connection,
-                            person_csv,
-                            person_table)
-    create_index(cursor,
-                 connection,
-                 person_table,
-                 person_index,
-                 "alspacid")
+    if args.update_persons:
+        #~ bring person csv into sqlite table, apply index
+        csv_to_new_sqlite_table(cursor,
+                                connection,
+                                person_csv,
+                                person_table)
+        create_index(cursor,
+                    connection,
+                    person_table,
+                    person_index,
+                    "alspacid")
+
+    transaction_csv = "boots_transaction_PoC.csv"
+    if args.join_transactions:
+        #~ take a csv of transactions,
+        #~ pull person and product details from tables, join on
+        #~ boots id and product id <->
+        join_transaction_to_person(cursor,
+                                   connection,
+                                   transaction_csv)
+
+    #~ debug count records
+    table_record_count(cursor, product_table)
+    table_record_count(cursor, person_table)
 
     #~ close connection to DB
     connection.close()
