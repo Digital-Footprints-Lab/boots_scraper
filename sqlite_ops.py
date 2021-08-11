@@ -4,21 +4,22 @@ import csv
 import pandas as pd
 import sqlite3
 from sqlite3 import Error
-import warnings
 
+#~ suppress pandas warning on spaces in column names
+import warnings
 warnings.filterwarnings("ignore")
 
+#~ test file suite (to meta module later)
 db_name = "test0113.db"
-
 product_csv = "scrape_PoC.csv"
 # product_csv = "scrape_dups.csv"
 more_csv = "more.csv"
 product_table = "products"
 product_index = "product_index"
-
 person_csv = "person_PoC.csv"
 person_table = "persons"
 person_index = "person_index"
+transaction_csv = "boots_transaction_PoC.csv"
 
 
 def args_setup():
@@ -101,13 +102,13 @@ def create_index(cursor,
 def add_csv_lines_to_table(cursor, connection, csv_file, table_name):
 
     """
-    ARGS: sqlite cursor + connection,
-          input csv file to be added,
-          name of the table to be added to
-
     Reads the incoming csv into a dataframe,
     then iterates through each row, inserting the relevant fields.
     If there are duplicate on unique index column, skip and do nothing.
+
+    ARGS: sqlite cursor + connection,
+          input csv file to be added,
+          name of the table to be added to
 
     RETS: nothing, commits changes to the SQLite DB.
     """
@@ -130,6 +131,17 @@ def add_csv_lines_to_table(cursor, connection, csv_file, table_name):
 
 def join_transaction_to_person(cursor, connection, transaction_csv):
 
+    """
+    Create or append incoming transactions, for a single person:
+    Each item in the transactions file is retrieved from the products table,
+    And added as a row to a table, for that person, of all transactions.
+
+    ARGS:   SQLite cursor + connection,
+            a local csv file of transactions
+
+    RETS:   nothing, commits changes to SQLite DB
+    """
+
     #~ read transaction csv into df
     transaction_df = pd.read_csv(transaction_csv)
 
@@ -137,7 +149,7 @@ def join_transaction_to_person(cursor, connection, transaction_csv):
     table_name = transaction_df.iloc[0]["ID"]
     print(table_name)
     #! todo create new table if exists
-    #! do we have to describe the table explicitly?
+    #? do we have to describe the table explicitly?
     #! i'd prefer to have the output of the JOIN to describe the table columns
     # cursor.execute(f"""CREATE TABLE IF NOT EXISTS {"table_name"}""")
 
@@ -149,7 +161,7 @@ def join_transaction_to_person(cursor, connection, transaction_csv):
                            AND products.productid = {row["ITEM_CODE"]}""")
         result = cursor.fetchall()
         print(result)
-        #! TODO insert each join to this person's product table table
+        #! TODO insert each join to this person's product table
         #! TODO include the transaction details, in particular time/date
 
     connection.commit()
@@ -204,7 +216,6 @@ def main():
                     person_index,
                     "alspacid")
 
-    transaction_csv = "boots_transaction_PoC.csv"
     if args.join_transactions:
         #~ take a csv of transactions,
         #~ pull person and product details from tables, join on
