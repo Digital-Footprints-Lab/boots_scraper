@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 #~ test file suite (to meta module later)
-db_name = "test0113.db"
+db_name = "test019.db"
 product_csv = "scrape_PoC.csv"
 # product_csv = "scrape_dups.csv"
 more_csv = "more.csv"
@@ -73,6 +73,7 @@ def csv_to_new_sqlite_table(cursor,
     connection.commit()
 
 
+#? do we need this? merge with csv -> table?
 def create_index(cursor,
                  connection,
                  table_name,
@@ -124,7 +125,7 @@ def add_csv_lines_to_table(cursor, connection, csv_file, table_name):
                            "{row["productid"]}",
                            "{row["name"]}",
                            "{row["PDP_productPrice"]}")
-                           ON CONFLICT DO NOTHING""")
+                           ON CONFLICT DO NOTHING;""")
 
     connection.commit()
 
@@ -144,25 +145,35 @@ def join_transaction_to_person(cursor, connection, transaction_csv):
 
     #~ read transaction csv into df
     transaction_df = pd.read_csv(transaction_csv)
-
-    #~ make a transactions table for this person (if new)
     table_name = transaction_df.iloc[0]["ID"]
-    print(table_name)
-    #! todo create new table if exists
-    #? do we have to describe the table explicitly?
-    #! i'd prefer to have the output of the JOIN to describe the table columns
-    # cursor.execute(f"""CREATE TABLE IF NOT EXISTS {"table_name"}""")
+
+    #~ create empty table with columns of tables and products, if new
+    cursor.execute(f"""CREATE TABLE IF NOT EXISTS "{table_name}" AS
+                       SELECT *
+                       FROM persons
+                       INNER JOIN products
+                       WHERE 0 = 1;""")
+
+    cursor.execute(f"""SELECT *
+                       FROM "{table_name}";
+                       """)
+
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    print(f"Database contains these tables:\n", cursor.fetchall())
 
     for _, row in transaction_df.iterrows():
-        cursor.execute(f"""SELECT *
+        cursor.execute(f"""INSERT INTO "{table_name}"
+                           SELECT *
                            FROM persons
                            INNER JOIN products
                            ON persons.bootsid = {row["ID"]}
-                           AND products.productid = {row["ITEM_CODE"]}""")
-        result = cursor.fetchall()
-        print(result)
-        #! TODO insert each join to this person's product table
-        #! TODO include the transaction details, in particular time/date
+                           AND products.productid = {row["ITEM_CODE"]};""")
+    cursor.execute(f"""SELECT *
+                       FROM "{table_name}";
+                       """)
+    result = cursor.fetchall()
+    print(f"Join table {table_name} contains:\n", result)
+    #! TODO include the transaction details, in particular time/date
 
     connection.commit()
 
