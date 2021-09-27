@@ -7,7 +7,7 @@
 sitemap
 venv/
 output/
-nohup.out
+nohup*
 
 __pycache__/
 dunnhumby_sample_description.md
