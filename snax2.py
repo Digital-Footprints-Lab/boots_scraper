@@ -1,4 +1,3 @@
-#import os
 
 #~ Standard library imports
 import sys
@@ -23,6 +22,7 @@ import scraper_meta  # things like user agents, in case we need to rotate
 
 
 def get_links_from_one_category(category, baseurl) -> pd.Series:
+
     """Get the full URL for each product in a category
 
     Args: a category and baseURL from snax_tagets
@@ -30,30 +30,27 @@ def get_links_from_one_category(category, baseurl) -> pd.Series:
 
     page_number = 1
     product_links = []
-    # ~ the final section of the category URL
+    #~ the final section of the category URL
     category_name = category.split("/")[-1]
 
     with alive_bar() as bar:
         while True:
-            # ~ pull down the category page
+            #~ pull down the category page
             category_page = baseurl + category + \
                 targets.page_string + str(page_number)
             target = requests.get(
                 category_page, headers=scraper_meta.user_agent).text
-            # ~ init BS object
+            #~ init BS object
             soup = BeautifulSoup(target, "lxml")
-            # ~ retrieve the link text element for all products on page
-            # product_list = get_product_list(target="a", attrs={"class" : "item__productName ClickSearchResultEvent_Class"})
-            # product_list = get_product_list(target="a", attrs="item__productName ClickSearchResultEvent_Class")
-            # print(product_list)
-            # get_product_list(target="a", attrs=[("class", "item__productName ClickSearchResultEvent_Class"), ])
-            #! SOLVE THIS WITH DECORATOR
-            #! boots
+
+            #~ retrieve the link text element for all products on page
+            #! this one if target is boots
             product_list = soup.find_all(
                 "a", {"class": "product_name_link product_view_gtm"})
-            #! sd
+            #! this one if target is superdrug
             # product_list = soup.find_all("a", {"class": "item__productName ClickSearchResultEvent_Class"})
-            # ~ incrementing to an empty product page means we are done here
+
+            #~ incrementing to an empty product page means we are done here
             if len(product_list) == 0:
                 print(
                     f"OK, {len(product_links)} {category_name} links retrieved [{page_number - 1} pages]")
@@ -73,6 +70,7 @@ def get_links_from_one_category(category, baseurl) -> pd.Series:
 
 def make_dataframe_of_links_from_all_categories(start_time,
                                                 categories) -> pd.DataFrame:
+
     """
     Calls get_links_from_one_category (this paginates) for each category.
     These are concatenated as the first column of the output DF.
@@ -87,14 +85,11 @@ def make_dataframe_of_links_from_all_categories(start_time,
         product_links = get_links_from_one_category(category, targets.baseurl)
         all_links = all_links.append(product_links, ignore_index=True)
 
-    # ~ add some links that don't appear in categories
-    # uncat = pd.Series(targets.uncategorised)
-    # all_links = all_links.append(uncat, ignore_index=True)
-    # ~ clean dups and re-index
+    #~ clean dups and re-index
     all_links = all_links.drop_duplicates().reset_index(drop=True)
-    # ~ send series to DF
+    #~ send series to DF
     all_links = all_links.to_frame()
-    # ~ label column one
+    #~ label column one
     all_links.columns = ["product_link"]
 
     return all_links
@@ -115,7 +110,7 @@ def populate_links_df_with_extracted_fields(dataframe,
     """
 
     total_snax = len(fields_to_extract) * dataframe.shape[0]
-    regex = re.compile(r"[\n\r\t]+")  # ~ whitespace cleaner
+    regex = re.compile(r"[\n\r\t]+")  #~ whitespace cleaner
     print("\n" + f".oO Retreiving details for {dataframe.shape[0]} products")
 
     with alive_bar(dataframe.shape[0]) as bar:
@@ -124,7 +119,7 @@ def populate_links_df_with_extracted_fields(dataframe,
 
             @retry(ConnectionResetError, tries=3, delay=10, backoff=10)
             def get_target_page(index):
-                # ~ pull down the full product page
+                #~ pull down the full product page
                 return requests.get(dataframe.at[index, "product_link"], headers=scraper_meta.user_agent).text
 
             try:
@@ -172,14 +167,14 @@ def populate_links_df_with_extracted_fields(dataframe,
 
 
 def select_long_description_field(dataframe) -> pd.DataFrame:
+
     """Columns named 13 and 14 and called that because
     those are the nested div names on the boots website;
     it is unclear which will be the true field, so both are acquired.
     We need to take the longer field, the shorter always being PDF or
     ordering details, or other crap that we don't want."""
 
-    print(
-        f".oO IDing long_description field for {dataframe.shape[0]} products")
+    print(f".oO IDing long_description field for {dataframe.shape[0]} products")
 
     with alive_bar() as bar:
         for index in range(dataframe.shape[0]):
