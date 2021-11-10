@@ -37,8 +37,12 @@ def get_links_from_one_category(category, baseurl) -> pd.Series:
             # ~ pull down the category page
             category_page = baseurl + category + \
                 targets.page_string + str(page_number)
-            target = requests.get(
-                category_page, headers=scraper_meta.user_agent).text
+            try:
+                target = requests.get(
+                    category_page, headers=scraper_meta.user_agent).text
+            except Exception as e:
+                print(f"This request threw an error: {e}")
+                continue
             # ~ init BS object
             soup = BeautifulSoup(target, "lxml")
 
